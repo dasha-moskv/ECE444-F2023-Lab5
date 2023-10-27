@@ -3,7 +3,8 @@ import pytest
 from pathlib import Path
 import json
 
-from project.app import app, db
+from project.app import app, db, login_required
+from project import models
 
 TEST_DB = "test.db"
 
@@ -28,7 +29,6 @@ def login(client, username, password):
         data=dict(username=username, password=password),
         follow_redirects=True,
     )
-
 
 def logout(client):
     """Logout helper function"""
@@ -86,3 +86,24 @@ def test_delete_message(client):
     rv = client.get("/delete/1")
     data = json.loads(rv.data)
     assert data["status"] == 1
+
+#"Be sure to write tests for this on your own" tests
+def test_search(client):
+    """Test the search function"""
+    with app.app_context():
+        post = models.Post(title="Test Title", text="Test Text")
+        db.session.add(post)
+        db.session.commit()
+
+    response = client.get('/search/?query=Test')
+    assert response.status_code == 200
+    assert b"Test Title" in response.data 
+    assert b"Test Text" in response.data  
+
+def test_login_required(client):
+    response = client.get("/delete/1")
+    assert response.status_code == 401
+
+    login(client, app.config["USERNAME"], app.config["PASSWORD"])
+    response_after_login = client.get("/delete/1")
+    assert response_after_login.status_code != 401
